@@ -1,0 +1,231 @@
+[
+  {
+    "feature_name": "age",
+    "description": "Participant's current age in years",
+    "data_type": "integer",
+    "category": "demographics",
+    "allowed_values": "18-65",
+    "used_in_model": true
+  },
+  {
+    "feature_name": "gender",
+    "description": "Participant's gender identity",
+    "data_type": "categorical",
+    "category": "demographics",
+    "allowed_values": [
+      "Male",
+      "Female",
+      "Non-binary/Other"
+    ],
+    "used_in_model": false,
+    "note": "EXCLUDED from model training \u2014 retained for subgroup fairness auditing only"
+  },
+  {
+    "feature_name": "race",
+    "description": "Participant's self-reported race",
+    "data_type": "categorical",
+    "category": "demographics",
+    "allowed_values": [
+      "White",
+      "Black/African American",
+      "Hispanic/Latino",
+      "Native American",
+      "Other"
+    ],
+    "used_in_model": false,
+    "note": "EXCLUDED from model training \u2014 retained for subgroup fairness auditing only"
+  },
+  {
+    "feature_name": "ethnicity",
+    "description": "Participant's ethnicity",
+    "data_type": "categorical",
+    "category": "demographics",
+    "allowed_values": [
+      "Non-Hispanic",
+      "Hispanic"
+    ],
+    "used_in_model": false,
+    "note": "EXCLUDED from model training \u2014 retained for subgroup fairness auditing only"
+  },
+  {
+    "feature_name": "marital_status",
+    "description": "Participant's current marital/relationship status",
+    "data_type": "categorical",
+    "category": "demographics",
+    "allowed_values": [
+      "Single",
+      "Married",
+      "Divorced",
+      "Separated",
+      "Widowed"
+    ],
+    "used_in_model": true
+  },
+  {
+    "feature_name": "employment_status",
+    "description": "Participant's current employment status",
+    "data_type": "categorical",
+    "category": "socioeconomic",
+    "allowed_values": [
+      "Employed Full-Time",
+      "Employed Part-Time",
+      "Unemployed",
+      "Disabled",
+      "Student"
+    ],
+    "used_in_model": true
+  },
+  {
+    "feature_name": "monthly_income",
+    "description": "Participant's reported monthly income in USD",
+    "data_type": "float",
+    "category": "socioeconomic",
+    "allowed_values": "0-8000+",
+    "used_in_model": true
+  },
+  {
+    "feature_name": "education_level",
+    "description": "Highest education level attained",
+    "data_type": "categorical",
+    "category": "socioeconomic",
+    "allowed_values": [
+      "Less than High School",
+      "High School/GED",
+      "Some College",
+      "Associate's",
+      "Bachelor's",
+      "Graduate"
+    ],
+    "used_in_model": true
+  },
+  {
+    "feature_name": "num_dependents",
+    "description": "Number of financial dependents",
+    "data_type": "integer",
+    "category": "socioeconomic",
+    "allowed_values": "0-10+",
+    "used_in_model": true
+  },
+  {
+    "feature_name": "housing_status",
+    "description": "Current housing situation",
+    "data_type": "categorical",
+    "category": "socioeconomic",
+    "allowed_values": [
+      "Stable Housing",
+      "Unstable Housing",
+      "Homeless",
+      "Transitional Housing",
+      "With Family"
+    ],
+    "used_in_model": true
+  },
+  {
+    "feature_name": "child_support",
+    "description": "Whether participant has active child support obligations",
+    "data_type": "boolean",
+    "category": "socioeconomic",
+    "allowed_values": [
+      true,
+      false
+    ],
+    "used_in_model": false
+  },
+  {
+    "feature_name": "prior_arrests",
+    "description": "Total number of prior arrests",
+    "data_type": "integer",
+    "category": "criminal_history",
+    "allowed_values": "0-25+",
+    "used_in_model": true
+  },
+  {
+    "feature_name": "prior_felonies",
+    "description": "Number of prior felony convictions",
+    "data_type": "integer",
+    "category": "criminal_history",
+    "allowed_values": "0-15+",
+    "used_in_model": true
+  },
+  {
+    "feature_name": "age_first_arrest",
+    "description": "Age at first recorded arrest",
+    "data_type": "integer",
+    "category": "criminal_history",
+    "allowed_values": "10-40",
+    "used_in_model": true
+  },
+  {
+    "feature_name": "arrest_frequency",
+    "description": "Average number of arrests per year since first arrest",
+    "data_type": "float",
+    "category": "criminal_history",
+    "allowed_values": "0-5+",
+    "used_in_model": true
+  },
+  {
+    "feature_name": "sanctions_count",
+    "description": "Number of program sanctions received to date",
+    "data_type": "integer",
+    "category": "program_metrics",
+    "allowed_values": "0-20+",
+    "used_in_model": true
+  },
+  {
+    "feature_name": "incentives_count",
+    "description": "Number of program incentives received to date",
+    "data_type": "integer",
+    "category": "program_metrics",
+    "allowed_values": "0-30+",
+    "used_in_model": true
+  },
+  {
+    "feature_name": "risk_assessment_score",
+    "description": "Standardized risk assessment instrument score (1-10)",
+    "data_type": "float",
+    "category": "program_metrics",
+    "allowed_values": "1-10",
+    "used_in_model": true
+  },
+  {
+    "feature_name": "substance_use_frequency",
+    "description": "Self-reported substance use frequency",
+    "data_type": "categorical",
+    "category": "behavioral",
+    "allowed_values": [
+      "Never",
+      "Rarely",
+      "Monthly",
+      "Weekly",
+      "Daily"
+    ],
+    "used_in_model": true
+  },
+  {
+    "feature_name": "trauma_score",
+    "description": "Trauma screening instrument score",
+    "data_type": "float",
+    "category": "behavioral",
+    "allowed_values": "0-15+",
+    "used_in_model": true
+  },
+  {
+    "feature_name": "ace_score",
+    "description": "Adverse Childhood Experiences (ACE) questionnaire score",
+    "data_type": "integer",
+    "category": "behavioral",
+    "allowed_values": "0-10",
+    "used_in_model": true
+  },
+  {
+    "feature_name": "recidivism_3yr",
+    "description": "Target variable: Whether participant was re-arrested within 3 years (SYNTHETIC LABEL)",
+    "data_type": "binary",
+    "category": "target",
+    "allowed_values": [
+      0,
+      1
+    ],
+    "note": "SYNTHETIC target variable \u2014 does NOT represent real outcomes"
+  }
+]

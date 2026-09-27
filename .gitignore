@@ -9,6 +9,30 @@ venv/
 .venv/
 ENV/
 
+# Node / Frontend
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Database & Environments
+*.db
+*.sqlite
+*.sqlite3
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+**/logs/
+*.log
+catboost_info/
+**/catboost_info/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
 # IDE / Editor
 .vscode/
 .idea/
@@ -18,7 +42,3 @@ ENV/
 # OS
 .DS_Store
 Thumbs.db
-
-# Logs
-logs/
-*.log

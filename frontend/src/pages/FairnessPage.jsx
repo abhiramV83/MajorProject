@@ -1,0 +1,3 @@
+import { useEffect, useState } from 'react';
+import { modelAPI } from '../services/api';
+export default function FairnessPage(){const [data,setData]=useState(null);useEffect(()=>{modelAPI.getFairness().then(r=>setData(r.data)).catch(()=>setData({error:'Fairness endpoint unavailable'}))},[]);return <div className="p-6 md:p-8 max-w-7xl mx-auto"><h1 className="text-3xl font-bold">Fairness</h1><p className="text-slate-500 mt-1">Post-hoc fairness monitoring and subgroup checks.</p><div className="mt-6 bg-white border rounded-2xl p-6"><pre className="text-sm bg-slate-50 rounded-xl p-5 overflow-auto">{JSON.stringify(data,null,2)||'Loading...'}</pre></div></div>}
