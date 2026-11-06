@@ -293,33 +293,20 @@ export default function AssessmentDetailPage() {
     const dec = overrideDecision || review.decision;
     const notes = overrideNotes !== undefined ? overrideNotes : review.notes;
     if (!dec) return toast.error('Select an official disposition decision');
+    const previousReview = review;
     setLoading(true);
     try {
       const res = await assessmentsAPI.submitReview(assessment.id, {
         decision: dec,
         notes: notes,
       });
-      if (res?.data) {
-        setAssessment(res.data);
-      } else {
-        setAssessment((prev) => ({
-          ...prev,
-          reviewer_decision: dec,
-          reviewer_notes: notes,
-          reviewed_at: new Date().toISOString(),
-        }));
-      }
+      if (!res?.data?.id) throw new Error('The server returned an invalid review response.');
+      setAssessment(res.data);
       setReview({ decision: dec, notes });
       toast.success(`Judicial disposition recorded: ${dec}`);
-    } catch {
-      setAssessment((prev) => ({
-        ...prev,
-        reviewer_decision: dec,
-        reviewer_notes: notes,
-        reviewed_at: new Date().toISOString(),
-      }));
-      setReview({ decision: dec, notes });
-      toast.success(`Judicial disposition recorded: ${dec}`);
+    } catch (error) {
+      setReview(previousReview);
+      toast.error(error?.response?.data?.detail || error?.message || 'Unable to record this disposition. Please retry.');
     } finally {
       setLoading(false);
     }
@@ -335,7 +322,6 @@ export default function AssessmentDetailPage() {
         ? (review.notes || 'Supervision tier and intervention requirements modified under judicial discretion.')
         : (review.notes || 'Adjudication deferred pending verified outpatient compliance and toxicology re-screening.');
 
-    setReview({ decision: dec, notes: defaultNotes });
     await submitReview(dec, defaultNotes);
   };
 

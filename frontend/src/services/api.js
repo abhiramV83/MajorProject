@@ -378,24 +378,7 @@ export const assessmentsAPI = {
   },
 
   submitReview: async (id, reviewData) => {
-    try {
-      return await api.post(`/assessments/${id}/review`, reviewData);
-    } catch {
-      const idx = liveAssessments.findIndex((a) => a.id === Number(id));
-      const updated = {
-        ...(idx !== -1 ? liveAssessments[idx] : liveAssessments[0] || {}),
-        id: Number(id),
-        reviewer_decision: reviewData.decision,
-        reviewer_notes: reviewData.notes,
-        reviewed_at: new Date().toISOString(),
-      };
-      if (idx !== -1) {
-        liveAssessments[idx] = updated;
-      } else {
-        liveAssessments.unshift(updated);
-      }
-      return { data: updated };
-    }
+    return api.post(`/assessments/${id}/review`, reviewData);
   },
   review: async (id, reviewData) => {
     return await assessmentsAPI.submitReview(id, reviewData);

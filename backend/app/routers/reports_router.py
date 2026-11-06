@@ -160,8 +160,8 @@ def assessment_pdf(
         pagesize=letter,
         leftMargin=36,
         rightMargin=36,
-        topMargin=36,
-        bottomMargin=36,
+        topMargin=44,
+        bottomMargin=48,
     )
 
     # Styles aligned with Obsidian Noir & Luxury Legal Tech UI Theme
@@ -169,13 +169,13 @@ def assessment_pdf(
 
     # Color Palette Tokens
     C_HEADER_BG = colors.HexColor("#080A0F")
-    C_SURFACE_BG = colors.HexColor("#F8FAFC")
+    C_SURFACE_BG = colors.HexColor("#F1F5F9")
     C_BORDER = colors.HexColor("#CBD5E1")
-    C_CYAN_ACCENT = colors.HexColor("#0593C6")
-    C_TEXT_PRIMARY = colors.HexColor("#0F172A")
-    C_TEXT_MUTED = colors.HexColor("#64748B")
-    C_EMERALD = colors.HexColor("#059669")
-    C_ROSE = colors.HexColor("#E11D48")
+    C_CYAN_ACCENT = colors.HexColor("#0369A1")
+    C_TEXT_PRIMARY = colors.HexColor("#0A1626")
+    C_TEXT_MUTED = colors.HexColor("#475569")
+    C_EMERALD = colors.HexColor("#047857")
+    C_ROSE = colors.HexColor("#B91C1C")
     C_WHITE = colors.HexColor("#FFFFFF")
 
     risk_str = (assessment.risk_level.value if hasattr(assessment.risk_level, "value") else str(assessment.risk_level or "LOW")).upper()
@@ -187,24 +187,24 @@ def assessment_pdf(
         "TitleMain",
         parent=styles["Normal"],
         fontName="Helvetica-Bold",
-        fontSize=15,
-        leading=18,
+        fontSize=18,
+        leading=22,
         textColor=C_WHITE,
     )
     title_sub = ParagraphStyle(
         "TitleSub",
         parent=styles["Normal"],
         fontName="Helvetica",
-        fontSize=8.5,
-        leading=11,
+        fontSize=9,
+        leading=12,
         textColor=C_CYAN_ACCENT,
     )
     meta_tag = ParagraphStyle(
         "MetaTag",
         parent=styles["Normal"],
         fontName="Helvetica-Bold",
-        fontSize=7,
-        leading=9,
+        fontSize=8,
+        leading=10,
         textColor=colors.HexColor("#94A3B8"),
         alignment=2,
     )
@@ -212,8 +212,8 @@ def assessment_pdf(
         "SectionHeading",
         parent=styles["Normal"],
         fontName="Helvetica-Bold",
-        fontSize=10,
-        leading=13,
+        fontSize=11,
+        leading=14,
         textColor=C_TEXT_PRIMARY,
         spaceAfter=4,
     )
@@ -221,40 +221,40 @@ def assessment_pdf(
         "LabelStyle",
         parent=styles["Normal"],
         fontName="Helvetica-Bold",
-        fontSize=7.5,
-        leading=10,
+        fontSize=8,
+        leading=11,
         textColor=C_TEXT_MUTED,
     )
     value_style = ParagraphStyle(
         "ValueStyle",
         parent=styles["Normal"],
         fontName="Helvetica-Bold",
-        fontSize=9,
-        leading=12,
+        fontSize=10,
+        leading=13,
         textColor=C_TEXT_PRIMARY,
     )
     body_style = ParagraphStyle(
         "BodyStyle",
         parent=styles["Normal"],
         fontName="Helvetica",
-        fontSize=8.5,
-        leading=12,
+        fontSize=9.5,
+        leading=14,
         textColor=colors.HexColor("#334155"),
     )
     table_cell = ParagraphStyle(
         "TableCell",
         parent=styles["Normal"],
         fontName="Helvetica",
-        fontSize=8,
-        leading=10.5,
+        fontSize=9,
+        leading=12,
         textColor=C_TEXT_PRIMARY,
     )
     table_cell_bold = ParagraphStyle(
         "TableCellBold",
         parent=styles["Normal"],
         fontName="Helvetica-Bold",
-        fontSize=8,
-        leading=10.5,
+        fontSize=9,
+        leading=12,
         textColor=C_TEXT_PRIMARY,
     )
 
