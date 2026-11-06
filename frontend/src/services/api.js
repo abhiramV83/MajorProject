@@ -10,7 +10,11 @@ import {
   MOCK_FAIRNESS_AUDIT,
 } from './mockData';
 
-const API_BASE = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '');
+let rawBase = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '');
+if (rawBase && !rawBase.endsWith('/api')) {
+  rawBase = `${rawBase}/api`;
+}
+const API_BASE = rawBase;
 
 const api = axios.create({
   baseURL: API_BASE,
