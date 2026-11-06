@@ -49,8 +49,9 @@ async def lifespan(app: FastAPI):
     try:
         Base.metadata.create_all(bind=schema_engine)
         logger.info("Database tables created/verified.")
-        # Always seed demo users on startup (upsert — safe to run multiple times)
+        # Always seed demo users + demo data on startup (idempotent — safe to run multiple times)
         await seed_demo_users()
+        await seed_demo_data()
     except Exception as e:
         logger.exception("Startup error")
         raise
@@ -106,6 +107,102 @@ async def seed_demo_users():
         logger.info("Demo users seeded.")
     except Exception as e:
         logger.error(f"Seeding error: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
+
+async def seed_demo_data():
+    """Seed demo participants and assessments (idempotent — skips existing records)."""
+    from datetime import timedelta
+    from app.database.connection import SessionLocal
+    from app.models.db_models import (
+        User, UserRole, Participant, Assessment, RiskTrajectory, RiskLevel
+    )
+
+    db = SessionLocal()
+    try:
+        case_manager = db.query(User).filter(User.email == "casemanager@drugcourt.gov").first()
+        if not case_manager:
+            logger.warning("seed_demo_data: case manager account not found, skipping participant seed.")
+            return
+
+        from datetime import datetime
+        cases = [
+            (
+                "DC-109284", "John", "Carter", 42, 90, 24, 0, 0.85, 0,
+                [(58.2, "MEDIUM", "BASELINE"), (38.5, "MEDIUM", "IMPROVING")],
+            ),
+            (
+                "DC-204918", "Marcus", "Vance", 34, 60, 4, 4, 0.15, 2,
+                [(46.0, "MEDIUM", "BASELINE"), (68.4, "HIGH", "ALERT")],
+            ),
+            (
+                "DC-301827", "Elena", "Rodriguez", 28, 0, 0, 0, 0.0, 0,
+                [(51.0, "MEDIUM", "BASELINE")],
+            ),
+        ]
+
+        for (identifier, first, last, age, days, attendance, absence, employed, positive, checkpoints) in cases:
+            participant = db.query(Participant).filter(Participant.participant_id == identifier).first()
+            if participant is None:
+                participant = Participant(
+                    participant_id=identifier,
+                    first_name=first,
+                    last_name=last,
+                    age=age,
+                    enrollment_date=datetime.utcnow() - timedelta(days=days),
+                    program_attendances=attendance,
+                    program_unexcused_absences=absence,
+                    percent_days_employed=employed,
+                    drug_tests_positive_count=positive,
+                )
+                db.add(participant)
+                db.flush()
+
+            for index, (percent, tier, flag) in enumerate(checkpoints):
+                existing_assessment = (
+                    db.query(Assessment)
+                    .filter(
+                        Assessment.participant_id == participant.id,
+                        Assessment.model_version == f"demo_{index}",
+                    )
+                    .first()
+                )
+                if existing_assessment is not None:
+                    continue
+                probability = percent / 100
+                prior = checkpoints[index - 1][0] / 100 if index else probability
+                date = participant.enrollment_date + timedelta(days=30 * index)
+                new_assessment = Assessment(
+                    participant_id=participant.id,
+                    assessor_id=case_manager.id,
+                    assessment_date=date,
+                    assessment_stage="DYNAMIC" if index else "INTAKE",
+                    recidivism_probability=probability,
+                    risk_level=RiskLevel(tier),
+                    delta_risk=round(probability - prior, 4),
+                    trajectory_flag=flag,
+                    model_version=f"demo_{index}",
+                    narrative="Demonstration assessment with predefined risk values.",
+                )
+                db.add(new_assessment)
+                db.flush()
+                db.add(RiskTrajectory(
+                    participant_id=participant.id,
+                    assessment_id=new_assessment.id,
+                    model_stage=new_assessment.assessment_stage,
+                    risk_probability=probability,
+                    risk_level=tier,
+                    delta_risk=new_assessment.delta_risk,
+                    trajectory_flag=flag,
+                    recorded_at=date,
+                ))
+
+        db.commit()
+        logger.info("Demo participants and assessments seeded.")
+    except Exception as e:
+        logger.error(f"Demo data seeding error: {e}")
         db.rollback()
     finally:
         db.close()
