@@ -16,36 +16,28 @@ from app.config import settings
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
-# In-memory sliding window brute-force protection (per client-ip and email)
+# In-memory sliding window brute-force protection
 _FAILED_LOGIN_ATTEMPTS = defaultdict(list)
-_LOGIN_WINDOW_SECONDS = 180
-_MAX_FAILED_ATTEMPTS = 50
+_LOGIN_WINDOW_SECONDS = 300
+_MAX_FAILED_ATTEMPTS = 10
 
 
-def get_client_ip(request: Request) -> str:
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
-
-
-def check_login_rate_limit(key: str):
+def check_login_rate_limit(ip: str):
+    if not ip:
+        return
     now = time.time()
-    attempts = [t for t in _FAILED_LOGIN_ATTEMPTS[key] if now - t < _LOGIN_WINDOW_SECONDS]
-    _FAILED_LOGIN_ATTEMPTS[key] = attempts
+    attempts = [t for t in _FAILED_LOGIN_ATTEMPTS[ip] if now - t < _LOGIN_WINDOW_SECONDS]
+    _FAILED_LOGIN_ATTEMPTS[ip] = attempts
     if len(attempts) >= _MAX_FAILED_ATTEMPTS:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many failed login attempts. Please wait 3 minutes before trying again.",
+            detail="Too many failed login attempts. Please wait 5 minutes before trying again.",
         )
 
 
-def record_failed_attempt(key: str):
-    _FAILED_LOGIN_ATTEMPTS[key].append(time.time())
-
-
-def clear_failed_attempts(key: str):
-    _FAILED_LOGIN_ATTEMPTS.pop(key, None)
+def record_failed_attempt(ip: str):
+    if ip:
+        _FAILED_LOGIN_ATTEMPTS[ip].append(time.time())
 
 
 def log_action(
@@ -72,12 +64,12 @@ def log_action(
 
 @router.post("/login", response_model=Token)
 def login(request: Request, body: LoginRequest, db: Session = Depends(get_db)):
-    client_ip = get_client_ip(request)
-    rate_key = f"{client_ip}:{body.email.strip().lower()}"
+    client_ip = request.client.host if request.client else "unknown"
+    check_login_rate_limit(client_ip)
 
-    user = authenticate_user(db, body.email.strip(), body.password)
+    user = authenticate_user(db, body.email, body.password)
     if not user:
-        record_failed_attempt(rate_key)
+        record_failed_attempt(client_ip)
         # Log failed attempt
         log = AuditLog(
             action="LOGIN_FAILED",
@@ -88,14 +80,10 @@ def login(request: Request, body: LoginRequest, db: Session = Depends(get_db)):
         )
         db.add(log)
         db.commit()
-        check_login_rate_limit(rate_key)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
         )
-
-    # Valid login: clear failed attempts
-    clear_failed_attempts(rate_key)
 
     access_token = create_access_token(
         data={"sub": str(user.id)},

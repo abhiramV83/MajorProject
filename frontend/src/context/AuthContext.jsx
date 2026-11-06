@@ -76,16 +76,12 @@ export function AuthProvider({ children }) {
     setLoading(true);
     try {
       const res = await authAPI.login(email, password);
-      if (!res?.data?.access_token || !res?.data?.user) {
-        throw new Error('Invalid authentication response from server');
-      }
       setToken(res.data.access_token);
       setUser(res.data.user);
       toast.success(`Welcome, ${res.data.user.full_name}`);
       return res.data.user;
     } catch (err) {
-      const msg = err?.response?.data?.detail || err?.message || 'Invalid credentials';
-      toast.error(msg);
+      toast.error('Invalid credentials');
       throw err;
     } finally {
       setLoading(false);

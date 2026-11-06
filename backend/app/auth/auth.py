@@ -44,8 +44,7 @@ def get_db():
 
 # Authenticate user
 def authenticate_user(db: Session, email: str, password: str):
-    clean_email = email.strip().lower()
-    user = db.query(User).filter(User.email.ilike(clean_email)).first()
+    user = db.query(User).filter(User.email == email).first()
 
     if user is None:
         return None
@@ -53,23 +52,10 @@ def authenticate_user(db: Session, email: str, password: str):
     if not user.is_active:
         return None
 
-    # Check direct password
-    if verify_password(password, user.hashed_password):
-        return user
+    if not verify_password(password, user.hashed_password):
+        return None
 
-    # User-friendly tolerance: handle common variations (e.g., Judge123! vs judge123)
-    variations = [
-        password.lower(),
-        password.rstrip("!"),
-        password.lower().rstrip("!"),
-        password.capitalize(),
-        password + "!",
-    ]
-    for var in variations:
-        if var != password and verify_password(var, user.hashed_password):
-            return user
-
-    return None
+    return user
 
 
 # Create JWT token
