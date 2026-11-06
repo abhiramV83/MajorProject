@@ -68,33 +68,27 @@ async def seed_demo_users():
     try:
         demo_users = [
             {
-                "email": "admin@example.com",
-                "full_name": "Admin User",
-                "password": "Admin123!",
+                "email": "admin@drugcourt.gov",
+                "full_name": "System Administrator",
+                "password": "admin123",
                 "role": UserRole.ADMIN,
             },
             {
-                "email": "judge@example.com",
-                "full_name": "Judge Smith",
-                "password": "Judge123!",
+                "email": "judge@drugcourt.gov",
+                "full_name": "Hon. Patricia Vance",
+                "password": "judge123",
                 "role": UserRole.JUDGE,
             },
             {
-                "email": "manager@example.com",
-                "full_name": "Case Manager Jones",
-                "password": "Manager123!",
+                "email": "casemanager@drugcourt.gov",
+                "full_name": "Michael Henderson, MSW",
+                "password": "case123",
                 "role": UserRole.CASE_MANAGER,
             },
             {
-                "email": "provider@example.com",
-                "full_name": "Treatment Provider Lee",
-                "password": "Provider123!",
-                "role": UserRole.TREATMENT_PROVIDER,
-            },
-            {
-                "email": "officer@example.com",
-                "full_name": "Officer Williams",
-                "password": "Officer123!",
+                "email": "officer@drugcourt.gov",
+                "full_name": "Officer Sarah Jenkins",
+                "password": "officer123",
                 "role": UserRole.PROBATION_OFFICER,
             },
         ]

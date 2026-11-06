@@ -10,6 +10,7 @@ import {
   Scale,
   UserCheck,
   Shield,
+  BadgeCheck,
   Sun,
   Moon,
   CheckCircle2,
@@ -56,6 +57,13 @@ export default function LoginPage() {
       password: 'admin123',
       icon: Shield,
       desc: 'System governance, model benchmarks, cryptographic audit logs',
+    },
+    {
+      role: 'Probation Officer',
+      email: 'officer@drugcourt.gov',
+      password: 'officer123',
+      icon: BadgeCheck,
+      desc: 'Compliance monitoring, trajectory audits, violation reviews',
     },
   ];
 

@@ -45,8 +45,8 @@ export default function Navbar() {
   const roles = [
     { key: 'JUDGE', label: 'Judge' },
     { key: 'CASE_MANAGER', label: 'Case Manager' },
+    { key: 'PROBATION_OFFICER', label: 'Probation Officer' },
     { key: 'TREATMENT_PROVIDER', label: 'Treatment Provider' },
-    { key: 'STAFF', label: 'Court Staff' },
     { key: 'ADMIN', label: 'Administrator' },
   ];
 

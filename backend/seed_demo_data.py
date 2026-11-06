@@ -19,6 +19,7 @@ def seed() -> None:
             ("judge@drugcourt.gov", "Hon. Patricia Vance", "judge123", UserRole.JUDGE),
             ("casemanager@drugcourt.gov", "Michael Henderson, MSW", "case123", UserRole.CASE_MANAGER),
             ("admin@drugcourt.gov", "System Administrator", "admin123", UserRole.ADMIN),
+            ("officer@drugcourt.gov", "Officer Sarah Jenkins", "officer123", UserRole.PROBATION_OFFICER),
         ]
         users = {}
         for email, name, password, role in accounts:

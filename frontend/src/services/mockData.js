@@ -36,6 +36,14 @@ export const MOCK_USERS = [
     court_jurisdiction: 'Court IT & Analytics Directorate',
     is_active: true,
   },
+  {
+    id: 5,
+    email: 'officer@drugcourt.gov',
+    full_name: 'Officer Sarah Jenkins',
+    role: 'PROBATION_OFFICER',
+    court_jurisdiction: 'Community Corrections & Supervision Department',
+    is_active: true,
+  },
 ];
 
 export const MOCK_PARTICIPANTS = [
