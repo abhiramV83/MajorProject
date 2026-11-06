@@ -73,10 +73,9 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(acc.email, acc.password);
-      toast.success(`Logged in as ${acc.role}`);
       navigate('/dashboard');
     } catch {
-      toast.error('Unable to authenticate');
+      // Error toast is handled by AuthContext
     } finally {
       setLoading(false);
     }
@@ -90,7 +89,7 @@ export default function LoginPage() {
       await login(email, password);
       navigate('/dashboard');
     } catch {
-      toast.error('Authentication failed');
+      // Error toast is handled by AuthContext
     } finally {
       setLoading(false);
     }
