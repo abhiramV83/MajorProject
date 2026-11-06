@@ -18,43 +18,10 @@ def list_users(
     return db.query(User).all()
 
 
-@router.get("/{user_id}", response_model=UserOut)
-def get_user(
-    user_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    if current_user.id != user_id and current_user.role != UserRole.ADMIN:
-        raise HTTPException(status_code=403, detail="Access denied")
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
-
-
-@router.put("/{user_id}", response_model=UserOut)
-def update_user(
-    user_id: int,
-    body: UserUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    if current_user.id != user_id and current_user.role != UserRole.ADMIN:
-        raise HTTPException(status_code=403, detail="Access denied")
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    update_data = body.model_dump(exclude_unset=True)
-    if current_user.role != UserRole.ADMIN and any(
-        field in update_data for field in ("role", "email", "is_active")
-    ):
-        raise HTTPException(status_code=403, detail="Only admins can change account access")
-    for key, value in update_data.items():
-        setattr(user, key, value)
-    user.updated_at = datetime.utcnow()
-    db.commit()
-    db.refresh(user)
-    return user
+@router.get("/me", response_model=UserOut)
+def get_current_user_profile(current_user: User = Depends(get_current_user)):
+    """Return the profile of the currently authenticated user."""
+    return current_user
 
 
 @router.get("/dashboard/stats")
@@ -107,3 +74,42 @@ def get_dashboard_stats(
         "total_assessments": total_assessments,
         "total_interventions": total_interventions,
     }
+
+
+@router.get("/{user_id}", response_model=UserOut)
+def get_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.id != user_id and current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Access denied")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
+@router.put("/{user_id}", response_model=UserOut)
+def update_user(
+    user_id: int,
+    body: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.id != user_id and current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Access denied")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    update_data = body.model_dump(exclude_unset=True)
+    if current_user.role != UserRole.ADMIN and any(
+        field in update_data for field in ("role", "email", "is_active")
+    ):
+        raise HTTPException(status_code=403, detail="Only admins can change account access")
+    for key, value in update_data.items():
+        setattr(user, key, value)
+    user.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(user)
+    return user
