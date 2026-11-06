@@ -49,8 +49,25 @@ async def lifespan(app: FastAPI):
     try:
         Base.metadata.create_all(bind=schema_engine)
         logger.info("Database tables created/verified.")
-        if settings.ENVIRONMENT == "development" and not settings.NEON_BRANCH:
-            await seed_demo_users()
+        await seed_demo_users()
+        try:
+            from app.models.db_models import Participant
+            from app.database.connection import SessionLocal
+            check_db = SessionLocal()
+            try:
+                if check_db.query(Participant).count() == 0:
+                    logger.info("Database has 0 participants. Auto-seeding initial court cases...")
+                    import sys
+                    from pathlib import Path
+                    backend_root = Path(__file__).resolve().parent.parent
+                    if str(backend_root) not in sys.path:
+                        sys.path.insert(0, str(backend_root))
+                    from seed_demo_data import seed
+                    seed()
+            finally:
+                check_db.close()
+        except Exception as e:
+            logger.warning(f"Auto-seed check note: {e}")
     except Exception as e:
         logger.exception("Startup error")
         raise
@@ -138,17 +155,15 @@ async def add_security_headers(request, call_next):
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
 
-# CORS
-dev_origin_regex = (
-    r"^https?://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$"
-    if is_dev
-    else r"^https://.*\.vercel\.app$"
+# CORS - Allow localhost, all vercel.app preview and production domains, and onrender.com
+cors_origin_regex = (
+    r"^https?://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$|^https://.*\.vercel\.app$|^https://.*\.onrender\.com$"
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
-    allow_origin_regex=dev_origin_regex,
+    allow_origins=settings.cors_origins_list + ["https://decisionsupportsystem8.vercel.app"],
+    allow_origin_regex=cors_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
