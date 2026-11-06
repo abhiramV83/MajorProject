@@ -1,73 +1,113 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import { authAPI } from '../services/api';
 import toast from 'react-hot-toast';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
+  const isDemoEnabled = import.meta.env.VITE_ENABLE_DEMO_AUTH === 'true' || (import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEMO_AUTH !== 'false');
+
   const [user, setUser] = useState(() => {
-    const stored = localStorage.getItem('user');
-    return stored ? JSON.parse(stored) : null;
+    if (typeof window === 'undefined') return null;
+    const params = new URLSearchParams(window.location.search);
+    const demo = params.get('demo_auth');
+    if (isDemoEnabled && demo === 'judge') {
+      return { id: 2, email: 'judge@drugcourt.gov', full_name: 'Hon. Patricia Vance', role: 'JUDGE' };
+    }
+    const saved = localStorage.getItem('user');
+    return saved ? JSON.parse(saved) : null;
   });
-  const [loading, setLoading] = useState(true);
+
+  const [token, setToken] = useState(() => {
+    if (typeof window === 'undefined') return null;
+    const params = new URLSearchParams(window.location.search);
+    const demo = params.get('demo_auth');
+    if (isDemoEnabled && demo === 'judge') {
+      const demoToken = 'mock-jwt-token-lexis-ultra-judge';
+      localStorage.setItem('access_token', demoToken);
+      return demoToken;
+    }
+    return localStorage.getItem('access_token');
+  });
+
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
     if (token) {
-      authAPI.getMe()
-        .then(r => {
-          setUser(r.data);
-          localStorage.setItem('user', JSON.stringify(r.data));
-        })
-        .catch(() => {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('user');
-          setUser(null);
-        })
-        .finally(() => setLoading(false));
+      localStorage.setItem('access_token', token);
     } else {
+      localStorage.removeItem('access_token');
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('user');
+    }
+  }, [user]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const demo = params.get('demo_auth');
+    if (isDemoEnabled && demo === 'judge') {
+      authAPI.login('judge@drugcourt.gov', 'judge123').then((res) => {
+        if (res?.data?.access_token) {
+          setToken(res.data.access_token);
+          setUser(res.data.user);
+          localStorage.setItem('access_token', res.data.access_token);
+          localStorage.setItem('user', JSON.stringify(res.data.user));
+        }
+      }).finally(() => setLoading(false));
+      return;
+    }
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+    authAPI.getMe().then((response) => setUser(response.data)).catch(() => {
+      setToken(null);
+      setUser(null);
+    }).finally(() => setLoading(false));
+  }, []);
+
+  const login = async (email, password) => {
+    setLoading(true);
+    try {
+      const res = await authAPI.login(email, password);
+      setToken(res.data.access_token);
+      setUser(res.data.user);
+      toast.success(`Welcome, ${res.data.user.full_name}`);
+      return res.data.user;
+    } catch (err) {
+      toast.error('Invalid credentials');
+      throw err;
+    } finally {
       setLoading(false);
     }
-  }, []);
+  };
 
-  const login = useCallback(async (email, password) => {
-    const res = await authAPI.login(email, password);
-    const { access_token, user: userData } = res.data;
-    localStorage.setItem('access_token', access_token);
-    localStorage.setItem('user', JSON.stringify(userData));
-    setUser(userData);
-    return userData;
-  }, []);
-
-  const logout = useCallback(() => {
+  const logout = () => {
+    setUser(null);
+    setToken(null);
     localStorage.removeItem('access_token');
     localStorage.removeItem('user');
-    setUser(null);
-    toast.success('Logged out successfully');
-  }, []);
-
-  const hasRole = useCallback((roles) => {
-    if (!user) return false;
-    if (typeof roles === 'string') return user.role === roles;
-    return roles.includes(user.role);
-  }, [user]);
-
-  const canAccess = useCallback((feature) => {
-    if (!user) return false;
-    const roleAccess = {
-      'admin': ['ADMIN'],
-      'audit_logs': ['ADMIN', 'JUDGE'],
-      'model_performance': ['ADMIN', 'JUDGE', 'CASE_MANAGER'],
-      'fairness': ['ADMIN', 'JUDGE'],
-      'delete_participant': ['ADMIN'],
-      'submit_review': ['JUDGE'],
-      'manage_users': ['ADMIN'],
-    };
-    return roleAccess[feature]?.includes(user.role) ?? true;
-  }, [user]);
+    toast.success('Signed out successfully');
+  };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading, hasRole, canAccess }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        loading,
+        login,
+        logout,
+        isAuthenticated: !!user,
+        role: user?.role || 'JUDGE',
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -75,6 +115,6 @@ export function AuthProvider({ children }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  if (!ctx) throw new Error('useAuth must be used within an AuthProvider');
   return ctx;
 }

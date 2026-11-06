@@ -20,3 +20,4 @@ reportlab==4.2.5
 matplotlib==3.9.3
 seaborn==0.13.2
 aiofiles==24.1.0
+email-validator>=2.0.0

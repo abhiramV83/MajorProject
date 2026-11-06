@@ -4,7 +4,7 @@ from typing import Optional, List
 import math
 from app.database.connection import get_db
 from app.auth.auth import get_current_user
-from app.models.db_models import User, Participant, Assessment, AuditLog
+from app.models.db_models import User, Participant, Assessment, AuditLog, RiskTrajectory
 from app.schemas.schemas import (
     ParticipantCreate,
     ParticipantUpdate,
@@ -13,6 +13,7 @@ from app.schemas.schemas import (
     PaginatedParticipants,
     CaseNoteCreate,
     CaseNoteOut,
+    RiskTrajectoryOut,
 )
 from datetime import datetime
 import random
@@ -141,6 +142,43 @@ def get_participant(
         raise HTTPException(status_code=404, detail="Participant not found")
     log_action(db, current_user.id, "PARTICIPANT_VIEWED", "participant", str(p.id))
     return p
+
+
+@router.get("/{participant_id}/trajectory", response_model=List[RiskTrajectoryOut])
+def get_trajectory(
+    participant_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    participant = db.query(Participant).filter(Participant.id == participant_id).first()
+    if participant is None:
+        raise HTTPException(status_code=404, detail="Participant not found")
+    points = (db.query(RiskTrajectory).filter(RiskTrajectory.participant_id == participant_id)
+              .order_by(RiskTrajectory.recorded_at.asc(), RiskTrajectory.id.asc()).all())
+    if points:
+        return points
+    assessments = (db.query(Assessment)
+                   .filter(Assessment.participant_id == participant_id,
+                           Assessment.recidivism_probability.isnot(None))
+                   .order_by(Assessment.assessment_date.asc(), Assessment.id.asc()).all())
+    output = []
+    previous = None
+    for assessment in assessments:
+        probability = assessment.recidivism_probability
+        delta = probability - previous if previous is not None else 0.0
+        output.append(RiskTrajectoryOut(
+            id=assessment.id, participant_id=participant_id, assessment_id=assessment.id,
+            model_stage="INTAKE" if previous is None else "DYNAMIC",
+            risk_probability=probability,
+            risk_level=assessment.risk_level.value if assessment.risk_level else "MEDIUM",
+            delta_risk=delta,
+            trajectory_flag="BASELINE" if previous is None else
+                            "IMPROVING" if delta < -0.05 else
+                            "ALERT" if delta > 0.05 else "STABLE",
+            recorded_at=assessment.assessment_date,
+        ))
+        previous = probability
+    return output
 
 
 @router.put("/{participant_id}", response_model=ParticipantOut)

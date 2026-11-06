@@ -45,6 +45,10 @@ def update_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     update_data = body.model_dump(exclude_unset=True)
+    if current_user.role != UserRole.ADMIN and any(
+        field in update_data for field in ("role", "email", "is_active")
+    ):
+        raise HTTPException(status_code=403, detail="Only admins can change account access")
     for key, value in update_data.items():
         setattr(user, key, value)
     user.updated_at = datetime.utcnow()

@@ -14,8 +14,14 @@ if DATABASE_URL.startswith("sqlite"):
     engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
     logger.info(f"Using SQLite database: {DATABASE_URL}")
 else:
-    engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+    engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_size=5, max_overflow=5)
     logger.info(f"Using PostgreSQL database")
+
+schema_engine = (
+    create_engine(settings.DATABASE_URL_UNPOOLED, pool_pre_ping=True)
+    if settings.DATABASE_URL_UNPOOLED
+    else engine
+)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()

@@ -9,12 +9,13 @@ All predictions and recommendations are advisory only.
 
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from sqlalchemy import text
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import settings
-from app.database.connection import engine
+from app.database.connection import engine, schema_engine
 from app.models.db_models import Base
 from app.routers import (
     auth_router,
@@ -35,12 +36,24 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Startup/shutdown lifecycle."""
     logger.info("Starting Drug Court DSS API...")
+    if settings.ENVIRONMENT == "production":
+        if (
+            not settings.SECRET_KEY
+            or settings.SECRET_KEY in ("dev-secret-key-change-in-production", "secret", "changeme")
+            or len(settings.SECRET_KEY) < 32
+        ):
+            raise ValueError(
+                "CRITICAL SECURITY CONFIGURATION ERROR: SECRET_KEY must be a cryptographically "
+                "strong string with at least 32 characters in production."
+            )
     try:
-        Base.metadata.create_all(bind=engine)
+        Base.metadata.create_all(bind=schema_engine)
         logger.info("Database tables created/verified.")
-        await seed_demo_users()
+        if settings.ENVIRONMENT == "development" and not settings.NEON_BRANCH:
+            await seed_demo_users()
     except Exception as e:
-        logger.error(f"Startup error: {e}")
+        logger.exception("Startup error")
+        raise
     yield
     logger.info("Shutting down Drug Court DSS API...")
 
@@ -104,6 +117,8 @@ async def seed_demo_users():
         db.close()
 
 
+is_dev = settings.ENVIRONMENT == "development"
+
 app = FastAPI(
     title="Drug Court Decision Support System",
     description=(
@@ -112,14 +127,34 @@ app = FastAPI(
     ),
     version="1.0.0-prototype",
     lifespan=lifespan,
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
+    docs_url="/docs" if is_dev else None,
+    redoc_url="/api/redoc" if is_dev else None,
+    openapi_url="/openapi.json" if is_dev else None,
 )
 
+# Security Headers Middleware
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    if not is_dev:
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
+
 # CORS
+dev_origin_regex = (
+    r"^https?://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$"
+    if is_dev
+    else r"^https://.*\.vercel\.app$"
+)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
+    allow_origin_regex=dev_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -138,6 +173,12 @@ app.include_router(reports_router.router)
 
 @app.get("/api/health")
 def health_check():
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+    except Exception:
+        logger.exception("Database health check failed")
+        raise HTTPException(status_code=503, detail="Database unavailable")
     return {
         "status": "healthy",
         "system": "Drug Court Decision Support System",

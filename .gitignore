@@ -42,3 +42,13 @@ yarn-error.log*
 # OS
 .DS_Store
 Thumbs.db
+.neon
+
+# Test artifacts & browser data
+chrome_user_data/
+**/screenshots/
+test.png
+
+# Large local model caches & archive
+archive/
+**/team_notebook/*.pkl

@@ -1,5 +1,5 @@
-from pydantic import BaseModel, EmailStr
-from typing import Optional, List, Dict, Any
+from pydantic import BaseModel, EmailStr, Field
+from typing import Optional, List, Dict, Any, Union
 from datetime import datetime
 from enum import Enum
 
@@ -95,6 +95,10 @@ class ParticipantCreate(BaseModel):
     substance_use_frequency: Optional[str] = None
     trauma_score: Optional[float] = 0.0
     ace_score: Optional[int] = 0
+    program_attendances: Optional[int] = Field(default=0, ge=0)
+    program_unexcused_absences: Optional[int] = Field(default=0, ge=0)
+    percent_days_employed: Optional[float] = Field(default=0.0, ge=0, le=1)
+    drug_tests_positive_count: Optional[int] = Field(default=0, ge=0)
     program_status: Optional[str] = "Active"
 
 
@@ -129,6 +133,12 @@ class ParticipantOut(BaseModel):
     substance_use_frequency: Optional[str]
     trauma_score: Optional[float]
     ace_score: Optional[int]
+    program_attendances: Optional[int] = 0
+    program_unexcused_absences: Optional[int] = 0
+    percent_days_employed: Optional[float] = 0.0
+    drug_tests_positive_count: Optional[int] = 0
+    current_risk_level: Optional[str] = "PENDING"
+    current_risk_probability: Optional[float] = None
     program_status: Optional[str]
     enrollment_date: Optional[datetime]
     created_at: datetime
@@ -185,12 +195,16 @@ class AssessmentOut(BaseModel):
     participant_id: int
     assessor_id: int
     assessment_date: datetime
+    assessment_stage: Optional[str] = "INTAKE"
     recidivism_probability: Optional[float]
     risk_level: Optional[str]
+    delta_risk: Optional[float] = 0.0
+    trajectory_flag: Optional[str] = "STABLE"
     model_version: Optional[str]
     model_confidence: Optional[float]
     shap_values: Optional[Dict]
     top_features: Optional[List]
+    simulated_scenarios: Optional[Union[List[Dict[str, Any]], Dict[str, Any]]] = None
     narrative: Optional[str]
     narrative_generated_by: Optional[str]
     reviewer_decision: Optional[str]
@@ -201,6 +215,30 @@ class AssessmentOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class RiskTrajectoryOut(BaseModel):
+    id: int
+    participant_id: int
+    assessment_id: Optional[int]
+    model_stage: str
+    risk_probability: float
+    risk_level: str
+    delta_risk: float
+    trajectory_flag: str
+    recorded_at: datetime
+    notes: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class SimulationRequest(BaseModel):
+    program_attendances: Optional[int] = Field(default=None, ge=0)
+    program_unexcused_absences: Optional[int] = Field(default=None, ge=0)
+    percent_days_employed: Optional[float] = Field(default=None, ge=0, le=1)
+    jobs_per_year: Optional[float] = None
+    drug_tests_clean: Optional[bool] = None
 
 
 class ReviewRequest(BaseModel):

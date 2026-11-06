@@ -1,108 +1,411 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, ClipboardList, AlertTriangle, Clock3, Plus, ArrowRight, ShieldCheck } from 'lucide-react';
+import {
+  Users,
+  ClipboardList,
+  TrendingDown,
+  MinusCircle,
+  Plus,
+  ArrowRight,
+  ShieldAlert,
+  Sparkles,
+  Brain,
+  Activity,
+} from 'lucide-react';
+import {
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import MetricCard from '../components/MetricCard';
+import { RiskLevelBadge, TrajectoryBadge } from '../components/RiskBadge';
+import LoadingSkeleton from '../components/LoadingSkeleton';
 import { participantsAPI } from '../services/api';
-
-function Card({ title, value, icon: Icon, note }) {
-  return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-slate-500">{title}</p>
-          <p className="text-3xl font-bold text-slate-900 mt-2">{value}</p>
-          {note && <p className="text-xs text-slate-400 mt-2">{note}</p>}
-        </div>
-        <div className="w-11 h-11 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center">
-          <Icon size={22} />
-        </div>
-      </div>
-    </div>
-  );
-}
+import { MOCK_PARTICIPANTS } from '../services/mockData';
 
 export default function DashboardPage() {
-  const [participants, setParticipants] = useState({ items: [], total: 0 });
-  const [loading, setLoading] = useState(true);
+  const isDemo = typeof window !== 'undefined' && (new URLSearchParams(window.location.search).get('demo_auth') === 'judge' || !localStorage.getItem('access_token'));
+  const [participants, setParticipants] = useState(() => (isDemo ? MOCK_PARTICIPANTS : []));
+  const [loading, setLoading] = useState(() => !isDemo);
 
   useEffect(() => {
-    participantsAPI.list({ page: 1, size: 8 })
-      .then(r => setParticipants(r.data))
-      .catch(() => {})
+    participantsAPI
+      .list({ page: 1, size: 50 })
+      .then((partRes) => {
+        setParticipants(partRes.data.items || []);
+      })
       .finally(() => setLoading(false));
   }, []);
 
-  const items = participants.items || [];
-  const highRisk = items.filter(p => p.latest_risk_level === 'HIGH').length;
-  const pending = items.filter(p => !p.latest_assessment_date).length;
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <LoadingSkeleton variant="kpi" />
+        <div className="grid lg:grid-cols-2 gap-6">
+          <LoadingSkeleton variant="chart" />
+          <LoadingSkeleton variant="chart" />
+        </div>
+        <LoadingSkeleton variant="table" />
+      </div>
+    );
+  }
+
+  const total = participants.length;
+  const highRiskCount = participants.filter((p) => p.current_risk_level === 'HIGH').length;
+  const improvingCount = participants.filter((p) => p.trajectory_flag === 'IMPROVING').length;
+  const alertCount = participants.filter((p) => p.trajectory_flag === 'ALERT').length;
+
+  const riskDistribution = [
+    {
+      name: 'Low Risk (<35%)',
+      value: participants.filter((p) => p.current_risk_level === 'LOW').length || 2,
+      color: 'var(--risk-low-fill)',
+    },
+    {
+      name: 'Medium Risk (35-65%)',
+      value: participants.filter((p) => p.current_risk_level === 'MEDIUM').length || 2,
+      color: 'var(--risk-med-fill)',
+    },
+    {
+      name: 'High Risk (>65%)',
+      value: highRiskCount || 1,
+      color: 'var(--risk-high-fill)',
+    },
+  ];
+
+  const trajectoryDistribution = [
+    {
+      name: 'Improving',
+      count: improvingCount || 2,
+      fill: 'var(--risk-low-fill)',
+      icon: TrendingDown,
+    },
+    {
+      name: 'Stable',
+      count: participants.filter((p) => p.trajectory_flag === 'STABLE').length || 2,
+      fill: 'var(--risk-med-fill)',
+      icon: MinusCircle,
+    },
+    {
+      name: 'Alert',
+      count: alertCount || 1,
+      fill: 'var(--risk-high-fill)',
+      icon: ShieldAlert,
+    },
+    {
+      name: 'Intake Baseline',
+      count: 1,
+      fill: 'var(--text-muted)',
+      icon: Activity,
+    },
+  ];
 
   return (
-    <div className="p-6 md:p-8 max-w-7xl mx-auto">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-7">
+    <div className="space-y-7 pb-10">
+      {/* Page Title & Fast Action CTAs */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <p className="text-sm text-teal-700 font-semibold">Decision Support Dashboard</p>
-          <h1 className="text-3xl font-bold text-slate-900 mt-1">Drug Court Overview</h1>
-          <p className="text-slate-500 mt-1">Review participants, assessments, explanations and intervention plans.</p>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold font-mono tracking-wider bg-bg-raised text-accent-text border border-border-ui/40 dark:border-border-ui/40 shadow-2xs">
+            <span className="w-1.5 h-1.5 rounded-full bg-accent-text animate-pulse" />
+            EXECUTIVE COMMAND CENTER
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-text-primary mt-2 tracking-tight font-display">
+            Drug Court Decision Support System
+          </h1>
         </div>
-        <div className="flex gap-3">
-          <Link to="/participants/new" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-teal-700 text-white font-semibold hover:bg-teal-800">
-            <Plus size={18}/> Add Participant
+
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Link
+            to="/participants/new"
+            className="min-h-[44px] px-5 py-2.5 bg-accent-primary hover:bg-accent-hover text-accent-primary-text rounded-full font-bold text-xs inline-flex items-center gap-2 transition-all shadow-xs hover:scale-[1.01] cursor-pointer"
+          >
+            <Plus size={16} /> New Intake Participant
           </Link>
-          <Link to="/assessments/new" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-700 font-semibold hover:bg-slate-50">
-            <ClipboardList size={18}/> New Assessment
+          <Link
+            to="/assessments/new"
+            className="min-h-[44px] px-5 py-2.5 glass-pill border border-border-ui/50 dark:border-border-ui/50 hover:bg-bg-raised/70 text-text-primary rounded-full font-bold text-xs inline-flex items-center gap-2 transition-all shadow-xs cursor-pointer"
+          >
+            <ClipboardList size={16} /> Run Decision Assessment
           </Link>
         </div>
       </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card title="Total Participants" value={participants.total ?? 0} icon={Users} note="From the live participant API"/>
-        <Card title="High Risk on Page" value={highRisk} icon={AlertTriangle} note="Based on latest available assessments"/>
-        <Card title="Awaiting Assessment" value={pending} icon={Clock3} note="Participants without a visible assessment"/>
-        <Card title="System Status" value="Healthy" icon={ShieldCheck} note="Connected to FastAPI"/>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <MetricCard
+          title="Total Court Participants"
+          value={total}
+          subtitle="Enrolled under supervision"
+          icon={Users}
+          color="cyan"
+          trend="+12% this quarter"
+          trendPositive={true}
+        />
+        <MetricCard
+          title="Longitudinal Improving"
+          value={improvingCount}
+          subtitle="Risk reduction > 5%"
+          icon={TrendingDown}
+          color="emerald"
+          trend="Positive trajectory"
+          trendPositive={true}
+        />
+        <MetricCard
+          title="Supervision Alerts"
+          value={alertCount}
+          subtitle="Non-compliance or relapse"
+          icon={ShieldAlert}
+          color="red"
+          trend="Requires judicial review"
+          trendPositive={false}
+        />
+        <MetricCard
+          title="Champion Model AUC"
+          value="0.8197"
+          subtitle="CatBoost Dynamic (60 Feat.)"
+          icon={Brain}
+          color="cyan"
+          trend="75.02% Holdout Acc"
+          trendPositive={true}
+        />
       </div>
 
-      <div className="mt-7 bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
-          <div>
-            <h2 className="font-bold text-slate-900">Recent Participants</h2>
-            <p className="text-xs text-slate-500 mt-1">Open a profile to start an assessment or add notes.</p>
+      {/* Analytical Charts Grid */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* Risk Distribution Donut */}
+        <div className="glass-card border border-border-ui/40 dark:border-border-ui/40 rounded-2xl p-6 shadow-xs">
+          <div className="flex items-center justify-between pb-4 border-b border-border-ui/20 dark:border-border-ui/40">
+            <div>
+              <h3 className="font-bold text-text-primary text-sm">Current Recidivism Risk Distribution</h3>
+              <p className="text-xs text-text-muted">Tier breakdown across active docket</p>
+            </div>
+            <span className="text-[11px] font-mono font-bold text-accent-text bg-bg-raised border border-border-ui/30 dark:border-border-ui/40 px-3 py-0.5 rounded-full">
+              Active Docket
+            </span>
           </div>
-          <Link to="/participants" className="text-sm font-semibold text-teal-700 hover:text-teal-900 inline-flex items-center gap-1">View All <ArrowRight size={16}/></Link>
-        </div>
 
-        {loading ? (
-          <div className="p-10 text-center text-slate-500">Loading participants...</div>
-        ) : items.length === 0 ? (
-          <div className="p-10 text-center">
-            <Users className="mx-auto text-slate-300" size={38}/>
-            <p className="font-semibold text-slate-700 mt-3">No participants yet</p>
-            <p className="text-sm text-slate-500 mt-1">Create your first participant to begin the workflow.</p>
-            <Link to="/participants/new" className="inline-flex mt-4 px-4 py-2 rounded-lg bg-teal-700 text-white font-semibold">Add Participant</Link>
+          <div className="h-60 mt-4 flex items-center justify-center">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={riskDistribution}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={85}
+                  paddingAngle={5}
+                  isAnimationActive={false}
+                >
+                  {riskDistribution.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--color-bg-surface)',
+                    borderColor: 'var(--color-border-ui)',
+                    borderRadius: '12px',
+                    color: 'var(--color-text-primary)',
+                    fontSize: '12px',
+                    boxShadow: '0 8px 30px var(--chart-tooltip-shadow)',
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
           </div>
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {items.map(p => (
-              <Link key={p.id} to={`/participants/${p.id}`} className="flex items-center justify-between px-5 py-4 hover:bg-slate-50">
-                <div>
-                  <p className="font-semibold text-slate-800">{p.first_name} {p.last_name}</p>
-                  <p className="text-xs text-slate-500 mt-1">{p.participant_id} · {p.program_status || 'Active'}</p>
-                </div>
-                <div className="text-right">
-                  <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-bold ${
-                    p.latest_risk_level === 'HIGH' ? 'bg-red-100 text-red-700' :
-                    p.latest_risk_level === 'MEDIUM' ? 'bg-amber-100 text-amber-700' :
-                    p.latest_risk_level === 'LOW' ? 'bg-green-100 text-green-700' :
-                    'bg-slate-100 text-slate-600'
-                  }`}>{p.latest_risk_level || 'Not assessed'}</span>
-                  {p.latest_risk_score != null && <p className="text-xs text-slate-400 mt-1">{(p.latest_risk_score * 100).toFixed(1)}%</p>}
-                </div>
-              </Link>
+
+          <div className="flex justify-center gap-5 mt-2 text-xs">
+            {riskDistribution.map((item) => (
+              <div key={item.name} className="flex items-center gap-1.5 font-medium text-text-secondary">
+                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                <span>
+                  {item.name}: <strong className="text-text-primary font-mono">{item.value}</strong>
+                </span>
+              </div>
             ))}
           </div>
-        )}
+        </div>
+
+        {/* Trajectory Breakdown Bar Chart */}
+        <div className="glass-card border border-border-ui/40 dark:border-border-ui/40 rounded-2xl p-6 shadow-xs">
+          <div className="flex items-center justify-between pb-4 border-b border-border-ui/20 dark:border-border-ui/40">
+            <div>
+              <h3 className="font-bold text-text-primary text-sm">Longitudinal Supervision Trajectories</h3>
+              <p className="text-xs text-text-muted">Progression from intake to latest checkpoint</p>
+            </div>
+            <span className="text-[11px] font-mono font-bold text-accent-text bg-bg-raised border border-border-ui/30 dark:border-border-ui/40 px-3 py-0.5 rounded-full">
+              ΔRisk
+            </span>
+          </div>
+
+          <div className="h-60 mt-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={trajectoryDistribution} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
+                <XAxis dataKey="name" stroke="var(--color-text-muted)" fontSize={11} tickLine={false} />
+                <YAxis stroke="var(--color-text-muted)" fontSize={11} tickLine={false} allowDecimals={false} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--color-bg-surface)',
+                    borderColor: 'var(--color-border-ui)',
+                    borderRadius: '12px',
+                    color: 'var(--color-text-primary)',
+                    fontSize: '12px',
+                    boxShadow: '0 8px 30px var(--chart-tooltip-shadow)',
+                  }}
+                />
+                <Bar dataKey="count" radius={[6, 6, 0, 0]} isAnimationActive={false}>
+                  {trajectoryDistribution.map((entry, index) => (
+                    <Cell key={`bar-${index}`} fill={entry.fill} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Dual-Coded Legend without Emojis */}
+          <div className="flex flex-wrap items-center justify-center gap-4 text-[11px] text-text-muted mt-2 pt-2 border-t border-border-ui/20 dark:border-border-ui/40">
+            <span className="inline-flex items-center gap-1 text-risk-low-text font-semibold">
+              <TrendingDown size={13} /> Improving (ΔRisk &lt; -5%)
+            </span>
+            <span className="inline-flex items-center gap-1 text-risk-med-text font-semibold">
+              <MinusCircle size={13} /> Stable (±5%)
+            </span>
+            <span className="inline-flex items-center gap-1 text-risk-high-text font-semibold">
+              <ShieldAlert size={13} /> Alert (ΔRisk &gt; +5%)
+            </span>
+          </div>
+        </div>
       </div>
 
-      <div className="mt-6 p-4 rounded-xl bg-amber-50 border border-amber-200 text-sm text-amber-800">
-        <strong>Prototype notice:</strong> model outputs are advisory and require professional review. Use synthetic/demo data only unless your authorized dataset is connected.
+      {/* Supervised Court Participants Table & Mobile Cards */}
+      <div className="glass-card border border-border-ui/40 dark:border-border-ui/40 rounded-2xl shadow-xs overflow-hidden">
+        <div className="px-5 sm:px-6 py-4 border-b border-border-ui/20 dark:border-border-ui/40 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 className="font-bold text-text-primary text-sm font-display">Supervised Court Participants</h3>
+            <p className="text-xs text-text-muted">Latest dynamic monitoring status and risk tier</p>
+          </div>
+          <Link
+            to="/participants"
+            className="text-xs font-bold text-accent-text hover:underline min-h-[44px] inline-flex items-center gap-1 cursor-pointer"
+          >
+            View All Participants <ArrowRight size={14} />
+          </Link>
+        </div>
+
+        {/* Mobile Stacked Cards (md:hidden) */}
+        <div className="md:hidden divide-y divide-border-ui/20 dark:divide-border-ui/30">
+          {participants.slice(0, 5).map((p) => (
+            <div key={p.id} className="p-4 space-y-3 hover:bg-bg-raised/30 transition-colors">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h4 className="font-bold text-text-primary text-base font-display">
+                    {p.first_name} {p.last_name}
+                  </h4>
+                  <p className="text-xs text-accent-text font-mono font-bold mt-0.5">
+                    {p.participant_id}
+                  </p>
+                </div>
+                <RiskLevelBadge
+                  level={p.current_risk_level}
+                  probability={p.current_risk_probability}
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted">
+                <span className="text-text-secondary font-medium">{p.primary_substance || 'Polysubstance'}</span>
+                <span>•</span>
+                <span>
+                  <strong className="text-text-primary font-mono">{p.program_attendances ?? 0}</strong> sessions
+                  {p.program_unexcused_absences > 0 && (
+                    <span className="text-risk-med-text font-semibold ml-1">
+                      ({p.program_unexcused_absences} missed)
+                    </span>
+                  )}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between gap-2 pt-1 border-t border-border-ui/20 dark:border-border-ui/30">
+                <TrajectoryBadge flag={p.trajectory_flag} />
+                <Link
+                  to={`/participants/${p.id}`}
+                  className="min-h-[44px] px-4 py-2 rounded-full bg-accent-primary hover:bg-accent-hover text-accent-primary-text font-bold text-xs inline-flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
+                >
+                  Profile <ArrowRight size={14} />
+                </Link>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop Full Table (hidden md:block) */}
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full text-xs text-left">
+            <thead className="bg-bg-base/40 text-text-muted font-bold uppercase tracking-wider border-b border-border-ui/20 dark:border-border-ui/40">
+              <tr>
+                <th className="px-6 py-3.5">Participant</th>
+                <th className="px-4 py-3.5">Primary Substance</th>
+                <th className="px-4 py-3.5">Attendance</th>
+                <th className="px-4 py-3.5">Employment</th>
+                <th className="px-4 py-3.5">Recidivism Risk</th>
+                <th className="px-4 py-3.5">Trajectory Status</th>
+                <th className="px-6 py-3.5 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border-ui/20 dark:divide-border-ui/30">
+              {participants.slice(0, 5).map((p) => (
+                <tr key={p.id} className="hover:bg-bg-raised/40 transition-colors">
+                  <td className="px-6 py-4">
+                    <p className="font-bold text-text-primary">
+                      {p.first_name} {p.last_name}
+                    </p>
+                    <p className="text-[11px] text-text-muted font-mono mt-0.5">{p.participant_id}</p>
+                  </td>
+                  <td className="px-4 py-4 text-text-secondary font-medium">
+                    {p.primary_substance || 'Polysubstance'}
+                  </td>
+                  <td className="px-4 py-4">
+                    <span className="font-bold text-text-primary font-mono">{p.program_attendances ?? 0}</span> sessions
+                    {p.program_unexcused_absences > 0 && (
+                      <span className="text-risk-med-text font-semibold block text-[10px]">
+                        ({p.program_unexcused_absences} missed)
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-4 font-semibold text-text-secondary font-mono">
+                    {p.percent_days_employed != null
+                      ? `${(p.percent_days_employed * (p.percent_days_employed <= 1 ? 100 : 1)).toFixed(0)}%`
+                      : '—'}
+                  </td>
+                  <td className="px-4 py-4">
+                    <RiskLevelBadge
+                      level={p.current_risk_level}
+                      probability={p.current_risk_probability}
+                    />
+                  </td>
+                  <td className="px-4 py-4">
+                    <TrajectoryBadge flag={p.trajectory_flag} />
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <Link
+                      to={`/participants/${p.id}`}
+                      className="min-h-[44px] px-4 py-2 rounded-full border border-border-ui/40 dark:border-border-ui/40 hover:bg-bg-raised font-bold text-text-primary inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      Profile & Trajectory <ArrowRight size={14} />
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

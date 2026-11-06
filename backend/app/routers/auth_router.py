@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from datetime import timedelta
+import time
+from collections import defaultdict
 from app.database.connection import get_db
 from app.auth.auth import (
     authenticate_user,
@@ -13,6 +15,29 @@ from app.schemas.schemas import Token, LoginRequest, UserOut, UserCreate
 from app.config import settings
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
+
+# In-memory sliding window brute-force protection
+_FAILED_LOGIN_ATTEMPTS = defaultdict(list)
+_LOGIN_WINDOW_SECONDS = 300
+_MAX_FAILED_ATTEMPTS = 10
+
+
+def check_login_rate_limit(ip: str):
+    if not ip:
+        return
+    now = time.time()
+    attempts = [t for t in _FAILED_LOGIN_ATTEMPTS[ip] if now - t < _LOGIN_WINDOW_SECONDS]
+    _FAILED_LOGIN_ATTEMPTS[ip] = attempts
+    if len(attempts) >= _MAX_FAILED_ATTEMPTS:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many failed login attempts. Please wait 5 minutes before trying again.",
+        )
+
+
+def record_failed_attempt(ip: str):
+    if ip:
+        _FAILED_LOGIN_ATTEMPTS[ip].append(time.time())
 
 
 def log_action(
@@ -39,14 +64,18 @@ def log_action(
 
 @router.post("/login", response_model=Token)
 def login(request: Request, body: LoginRequest, db: Session = Depends(get_db)):
+    client_ip = request.client.host if request.client else "unknown"
+    check_login_rate_limit(client_ip)
+
     user = authenticate_user(db, body.email, body.password)
     if not user:
+        record_failed_attempt(client_ip)
         # Log failed attempt
         log = AuditLog(
             action="LOGIN_FAILED",
             resource_type="auth",
             details={"email": body.email},
-            ip_address=request.client.host if request.client else None,
+            ip_address=client_ip,
             status="failure",
         )
         db.add(log)

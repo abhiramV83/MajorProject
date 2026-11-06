@@ -87,10 +87,16 @@ class Participant(Base):
     age_first_arrest = Column(Integer)
     arrest_frequency = Column(Float, default=0.0)
 
-    # Program metrics
+    # Program metrics & dynamic monitoring indicators
     sanctions_count = Column(Integer, default=0)
     incentives_count = Column(Integer, default=0)
     risk_assessment_score = Column(Float)
+    program_attendances = Column(Integer, default=0)
+    program_unexcused_absences = Column(Integer, default=0)
+    percent_days_employed = Column(Float, default=0.0)
+    drug_tests_positive_count = Column(Integer, default=0)
+    current_risk_level = Column(String(20), default="PENDING")
+    current_risk_probability = Column(Float, nullable=True)
 
     # Behavioral indicators
     substance_use_frequency = Column(String(50))
@@ -106,6 +112,7 @@ class Participant(Base):
     assessments = relationship("Assessment", back_populates="participant")
     case_notes = relationship("CaseNote", back_populates="participant")
     intervention_plans = relationship("InterventionPlan", back_populates="participant")
+    trajectories = relationship("RiskTrajectory", back_populates="participant", order_by="RiskTrajectory.recorded_at")
 
 
 class Assessment(Base):
@@ -117,14 +124,20 @@ class Assessment(Base):
     assessment_date = Column(DateTime, default=datetime.utcnow)
 
     # Prediction results
+    assessment_stage = Column(String(50), default="INTAKE")  # "INTAKE" vs "DYNAMIC"
     recidivism_probability = Column(Float)
     risk_level = Column(SAEnum(RiskLevel))
-    model_version = Column(String(50), default="random_forest_v1")
+    delta_risk = Column(Float, default=0.0)
+    trajectory_flag = Column(String(50), default="STABLE")  # "IMPROVING", "STABLE", "ALERT"
+    model_version = Column(String(50), default="catboost_dynamic_champion_v1")
     model_confidence = Column(Float)
 
     # SHAP stored as JSON
     shap_values = Column(JSON)
     top_features = Column(JSON)
+
+    # What-If Counterfactual scenarios
+    simulated_scenarios = Column(JSON, nullable=True)
 
     # GenAI narrative
     narrative = Column(Text)
@@ -232,3 +245,20 @@ class ModelVersion(Base):
     is_active = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     performance_data = Column(JSON)
+
+
+class RiskTrajectory(Base):
+    __tablename__ = "risk_trajectories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    participant_id = Column(Integer, ForeignKey("participants.id"), nullable=False)
+    assessment_id = Column(Integer, ForeignKey("assessments.id"), nullable=True)
+    model_stage = Column(String(50), default="DYNAMIC")  # "INTAKE" or "DYNAMIC"
+    risk_probability = Column(Float, nullable=False)
+    risk_level = Column(String(20), nullable=False)
+    delta_risk = Column(Float, default=0.0)
+    trajectory_flag = Column(String(20), default="STABLE")  # "IMPROVING", "STABLE", "ALERT"
+    recorded_at = Column(DateTime, default=datetime.utcnow)
+    notes = Column(Text, nullable=True)
+
+    participant = relationship("Participant", back_populates="trajectories")
