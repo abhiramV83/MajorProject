@@ -31,7 +31,8 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // Only clear session on 401 for authenticated routes — NOT for the login endpoint itself
+    if (error.response?.status === 401 && !error.config?.url?.includes('/auth/login')) {
       const isDemo = new URLSearchParams(window.location.search).get('demo_auth');
       if (!isDemo) {
         localStorage.removeItem('access_token');
@@ -61,28 +62,39 @@ export const checkLiveBackend = async () => {
 
 export const authAPI = {
   login: async (email, password) => {
+    // Always try the real backend first. Only fall back to mock if explicitly in demo mode.
+    const isDemoMode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo_auth');
     try {
       return await api.post('/auth/login', { email, password });
     } catch (err) {
-      // Mock fallback for standalone UI evaluation & demonstration
-      const matched =
-        MOCK_USERS.find((u) => u.email.toLowerCase() === (email || '').toLowerCase()) ||
-        MOCK_USERS[0];
-      return {
-        data: {
-          access_token: `mock-jwt-token-lexis-ultra-${matched.role.toLowerCase()}`,
-          token_type: 'bearer',
-          user: matched,
-        },
-      };
+      // Only fall back to mock data in explicit demo mode (never in production login)
+      if (isDemoMode) {
+        const matched =
+          MOCK_USERS.find((u) => u.email.toLowerCase() === (email || '').toLowerCase()) ||
+          MOCK_USERS[0];
+        return {
+          data: {
+            access_token: `mock-jwt-token-lexis-ultra-${matched.role.toLowerCase()}`,
+            token_type: 'bearer',
+            user: matched,
+          },
+        };
+      }
+      // Re-throw so AuthContext can show the error toast
+      throw err;
     }
   },
   getMe: async () => {
     try {
       return await api.get('/auth/me');
-    } catch {
-      const stored = localStorage.getItem('user');
-      return { data: stored ? JSON.parse(stored) : MOCK_USERS[0] };
+    } catch (err) {
+      // Only fall back to localStorage in demo mode
+      const isDemoMode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo_auth');
+      if (isDemoMode) {
+        const stored = localStorage.getItem('user');
+        return { data: stored ? JSON.parse(stored) : MOCK_USERS[0] };
+      }
+      throw err;
     }
   },
 };

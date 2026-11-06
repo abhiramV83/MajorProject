@@ -49,8 +49,8 @@ async def lifespan(app: FastAPI):
     try:
         Base.metadata.create_all(bind=schema_engine)
         logger.info("Database tables created/verified.")
-        if settings.ENVIRONMENT == "development" and not settings.NEON_BRANCH:
-            await seed_demo_users()
+        # Always seed demo users on startup (upsert — safe to run multiple times)
+        await seed_demo_users()
     except Exception as e:
         logger.exception("Startup error")
         raise
@@ -138,17 +138,17 @@ async def add_security_headers(request, call_next):
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
 
-# CORS
-dev_origin_regex = (
+# CORS — allow localhost for dev, all vercel.app + onrender.com for prod
+cors_origin_regex = (
     r"^https?://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$"
-    if is_dev
-    else r"^https://.*\.vercel\.app$"
+    r"|^https://.*\.vercel\.app$"
+    r"|^https://.*\.onrender\.com$"
 )
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
-    allow_origin_regex=dev_origin_regex,
+    allow_origin_regex=cors_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
