@@ -11,6 +11,8 @@ import {
   UserCheck,
   Shield,
   BadgeCheck,
+  Eye,
+  EyeOff,
   Sun,
   Moon,
   CheckCircle2,
@@ -22,10 +24,11 @@ export default function LoginPage() {
   const { login } = useAuth();
   const { isDark, toggleTheme } = useTheme();
 
-  const isDemoAuthEnabled = import.meta.env.VITE_ENABLE_DEMO_AUTH === 'true' || (import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEMO_AUTH !== 'false');
+  const isDemoAuthEnabled = import.meta.env.VITE_ENABLE_DEMO_AUTH !== 'false';
 
-  const [email, setEmail] = useState(() => (isDemoAuthEnabled ? 'judge@drugcourt.gov' : ''));
-  const [password, setPassword] = useState(() => (isDemoAuthEnabled ? 'judge123' : ''));
+  const [email, setEmail] = useState('judge@drugcourt.gov');
+  const [password, setPassword] = useState('judge123');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -258,13 +261,22 @@ export default function LoginPage() {
                     size={18}
                   />
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                     required
-                    className="w-full pl-10 pr-4 py-3 min-h-[48px] rounded-xl bg-bg-base border border-border-ui text-base text-text-primary placeholder:text-text-muted focus:ring-2 focus:ring-accent-primary focus:border-accent-primary outline-none transition-all"
+                    className="w-full pl-10 pr-12 py-3 min-h-[48px] rounded-xl bg-bg-base border border-border-ui text-base text-text-primary placeholder:text-text-muted focus:ring-2 focus:ring-accent-primary focus:border-accent-primary outline-none transition-all font-mono"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-3.5 text-text-muted hover:text-text-primary p-1 cursor-pointer transition-colors"
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
                 </div>
               </div>
 
