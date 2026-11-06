@@ -290,8 +290,9 @@ export default function AssessmentDetailPage() {
 
   const submitReview = async (overrideDecision, overrideNotes) => {
     if (!assessment) return;
-    const dec = overrideDecision || review.decision;
-    const notes = overrideNotes !== undefined ? overrideNotes : review.notes;
+    // Button handlers may pass a click event; only accept explicit string overrides.
+    const dec = typeof overrideDecision === 'string' ? overrideDecision : review.decision;
+    const notes = typeof overrideNotes === 'string' ? overrideNotes : review.notes;
     if (!dec) return toast.error('Select an official disposition decision');
     const previousReview = review;
     setLoading(true);
@@ -761,35 +762,17 @@ export default function AssessmentDetailPage() {
                   {/* High-Visibility Judicial Disposition Pill */}
                   {assessment.reviewer_decision ? (
                     <span
-                      className={`text-xs px-3.5 py-1 rounded-full font-bold uppercase tracking-wider font-mono inline-flex items-center gap-1.5 border shadow-xs ${
+                      className={`text-xs font-bold uppercase tracking-wider font-mono inline-flex items-center gap-1.5 ${
                         assessment.reviewer_decision === 'REJECT'
-                          ? 'bg-rose-500/15 text-rose-400 border-rose-500/40 shadow-rose-500/10'
+                          ? 'text-rose-700 dark:text-rose-400'
                           : assessment.reviewer_decision === 'ACCEPT'
-                          ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40 shadow-emerald-500/10'
+                          ? 'text-emerald-700 dark:text-emerald-400'
                           : assessment.reviewer_decision === 'MODIFY'
-                          ? 'bg-amber-500/15 text-amber-400 border-amber-500/40 shadow-amber-500/10'
-                          : 'bg-purple-500/15 text-purple-400 border-purple-500/40 shadow-purple-500/10'
+                          ? 'text-amber-700 dark:text-amber-400'
+                          : 'text-purple-700 dark:text-purple-400'
                       }`}
                     >
-                      <span
-                        className={`w-2 h-2 rounded-full shrink-0 ${
-                          assessment.reviewer_decision === 'REJECT'
-                            ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]'
-                            : assessment.reviewer_decision === 'ACCEPT'
-                            ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]'
-                            : assessment.reviewer_decision === 'MODIFY'
-                            ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.8)]'
-                            : 'bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.8)]'
-                        }`}
-                      />
-                      <span>
-                        Disposition: {assessment.reviewer_decision}
-                        {assessment.reviewer_decision === 'REJECT'
-                          ? ' (OVERRULED BY BENCH)'
-                          : assessment.reviewer_decision === 'ACCEPT'
-                          ? ' (ADOPTED BY BENCH)'
-                          : ''}
-                      </span>
+                      <span>{assessment.reviewer_decision === 'REJECT' ? 'Rejected' : `Disposition: ${assessment.reviewer_decision}`}</span>
                     </span>
                   ) : (
                     <span className="text-xs px-3 py-1 rounded-full bg-bg-raised/60 dark:bg-white/5 border border-border-ui/40 dark:border-white/10 text-text-muted font-bold uppercase tracking-wider font-mono inline-flex items-center gap-1.5">
@@ -871,33 +854,6 @@ export default function AssessmentDetailPage() {
               </div>
             )}
           </div>
-
-          {/* Judicial Override Notice Banner */}
-          {assessment.reviewer_decision === 'REJECT' && (
-            <div className="p-4 sm:p-5 rounded-3xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-3.5 shadow-sm">
-              <div className="p-2 rounded-xl bg-rose-500/20 text-rose-400 shrink-0">
-                <AlertTriangle size={20} />
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="font-bold text-rose-400 text-sm font-display uppercase tracking-wide">
-                    Official Judicial Disposition: REJECTED (Algorithmic Risk Overruled)
-                  </h3>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 font-bold border border-rose-500/30">
-                    BENCH OVERRIDE ACTIVE
-                  </span>
-                </div>
-                <p className="text-xs text-rose-200/90 leading-relaxed">
-                  The presiding judge has formally rejected and overruled this assessment&apos;s algorithmic risk determination.
-                  {assessment.reviewer_notes && (
-                    <span className="block mt-1.5 font-mono text-xs text-rose-300/90 italic bg-rose-950/30 p-2.5 rounded-xl border border-rose-500/20">
-                      Judicial Finding: &ldquo;{assessment.reviewer_notes}&rdquo;
-                    </span>
-                  )}
-                </p>
-              </div>
-            </div>
-          )}
 
           {/* Model Risk & TreeSHAP Local Attributions */}
           <div className="grid lg:grid-cols-12 gap-6">
@@ -1408,7 +1364,7 @@ export default function AssessmentDetailPage() {
 
                   <button
                     type="button"
-                    onClick={submitReview}
+                    onClick={() => submitReview()}
                     disabled={loading}
                     className="w-full py-3.5 min-h-[48px] rounded-full bg-accent-primary hover:bg-accent-hover text-accent-primary-text font-bold text-xs transition-all shadow-xs hover:scale-[1.01] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                   >
@@ -1475,7 +1431,7 @@ export default function AssessmentDetailPage() {
             primaryAction={{
               label: review.decision ? `Record ${review.decision}` : 'Record Disposition',
               icon: CheckCircle2,
-              onClick: submitReview,
+              onClick: () => submitReview(),
               loading,
             }}
           />
